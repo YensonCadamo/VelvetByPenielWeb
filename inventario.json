@@ -124,5 +124,17 @@
     "nombre": "[HISTORIAL_ESCANEO] {\"codigo\":\"6901232008588\",\"nombre\":\"Pantalón MTK\",\"precio\":17,\"fecha\":\"06/11/2026, 04:39:54 p. m.\",\"timestamp\":1793997594627}",
     "cantidad": 1,
     "precio": 0
+  },
+  {
+    "id": 1794013127164,
+    "nombre": "[HISTORIAL_ESCANEO] {\"codigo\":\"2603340200338\",\"nombre\":\"Suéter Negro de Botones dorados\",\"precio\":20,\"fecha\":\"06/11/2026, 08:58:46 p. m.\",\"timestamp\":1794013126690}",
+    "cantidad": 1,
+    "precio": 0
+  },
+  {
+    "id": 1794013192654,
+    "nombre": "[VP-813687] camiasas Oversize | F: 06/11/2026, 08:59 p. m.",
+    "cantidad": 100,
+    "precio": 15
   }
 ]
