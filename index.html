@@ -912,7 +912,11 @@
             lastUpdated = document.getElementById('lastUpdated');
 
             if (tasaBinanceInput) tasaBinanceInput.addEventListener('input', () => { calcularCalculadora(); });
-            if (tasaBCVCalcInput) tasaBCVCalcInput.addEventListener('input', () => { calcularCalculadora(); });
+            if (tasaBCVCalcInput) tasaBCVCalcInput.addEventListener('input', () => { 
+                tasaBCV = parseFloat(tasaBCVCalcInput.value) || tasaBCV;
+                actualizarHeaderTasas();
+                calcularCalculadora(); 
+            });
             if (precioCostoCalcInput) precioCostoCalcInput.addEventListener('input', calcularCalculadora);
 
             lucide.createIcons();
@@ -1125,7 +1129,6 @@
                 if (!response.ok) throw new Error("No se pudo obtener la data del servidor");
                 const dataRaw = await response.json();
                 
-                // Formateamos exactamente como el archivo inventario.json original del usuario
                 const dataJSON = JSON.stringify(dataRaw, null, 2);
                 const blob = new Blob([dataJSON], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -1140,7 +1143,6 @@
                 
                 mostrarToast("Backup inventario.json descargado con éxito 📦");
             } catch (e) {
-                // Alternativa usando la memoria local si el endpoint no estuviera disponible de inmediato
                 const backupArray = productos.map(p => ({
                     id: p.id,
                     nombre: p.rawNombre || `[${p.codigo}] ${p.nombre} | F: ${p.fecha}`,
@@ -1148,7 +1150,6 @@
                     precio: p.precioVenta
                 }));
                 
-                // Incluimos también los de historial si existen
                 historialEscaneos.forEach((esc, idx) => {
                     backupArray.push({
                         id: 9999000 + idx,
@@ -1178,9 +1179,8 @@
             const codigoKey = producto.codigo.trim().toLowerCase();
             const ahoraTiempo = Date.now();
 
-            // Límite de seguridad de 5 segundos exactos para evitar que ráfagas de lectura añadan múltiples veces la misma prenda
             if (ultimosEscaneosPorCodigo[codigoKey] && (ahoraTiempo - ultimosEscaneosPorCodigo[codigoKey] < 5000)) {
-                return; // Ignora el escaneo duplicado en ráfaga
+                return;
             }
             ultimosEscaneosPorCodigo[codigoKey] = ahoraTiempo;
 
@@ -1233,6 +1233,14 @@
             }
         }
 
+        function actualizarHeaderTasas() {
+            const txtBCV = `Bs. ${tasaBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const mob = document.getElementById('tasa-bcv-mobile');
+            const desk = document.getElementById('tasa-bcv-desktop');
+            if (mob) mob.innerText = txtBCV;
+            if (desk) desk.innerText = txtBCV;
+        }
+
         async function obtenerTasasEnVivoCalc() {
             if (syncIconCalc) syncIconCalc.classList.add('fa-spin');
             if (lastUpdated) lastUpdated.innerText = "Sincronizando...";
@@ -1249,12 +1257,15 @@
             let exitoBCV = false;
             let exitoBinance = false;
 
+            // 1. Dólar BCV en vivo con fallback múltiple de APIs
             try {
-                const resBCV = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                const resBCV = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', {
+                    headers: { 'Accept': 'application/json' }
+                });
                 if (resBCV.ok) {
                     const dataBCV = await resBCV.json();
-                    if (dataBCV && dataBCV.promedio) {
-                        tasaBCV = parseFloat(dataBCV.promedio);
+                    if (dataBCV && (dataBCV.promedio || dataBCV.precio)) {
+                        tasaBCV = parseFloat(dataBCV.promedio || dataBCV.precio);
                         if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
                         exitoBCV = true;
                     }
@@ -1263,31 +1274,48 @@
 
             if (!exitoBCV) {
                 try {
-                    const resBCVAlt = await fetch('https://rates.dolarvzla.com/bcv/current.json');
-                    const dataAlt = await resBCVAlt.json();
-                    if (dataAlt && dataAlt.current && dataAlt.current.usd) {
-                        tasaBCV = parseFloat(dataAlt.current.usd);
-                        if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
-                        exitoBCV = true;
+                    const resBCVAlt = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+                    if (resBCVAlt.ok) {
+                        const dataAlt = await resBCVAlt.json();
+                        if (dataAlt && dataAlt.monedas && dataAlt.monedas.usd && dataAlt.monedas.usd.promedio) {
+                            tasaBCV = parseFloat(dataAlt.monedas.usd.promedio);
+                            if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
+                            exitoBCV = true;
+                        }
                     }
                 } catch (err) {}
             }
 
-            const txtBCV = `Bs. ${tasaBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            if(document.getElementById('tasa-bcv-mobile')) document.getElementById('tasa-bcv-mobile').innerText = txtBCV;
-            if(document.getElementById('tasa-bcv-desktop')) document.getElementById('tasa-bcv-desktop').innerText = txtBCV;
+            if (!exitoBCV) {
+                try {
+                    const resBCV3 = await fetch('https://criptoya.com/api/bcv');
+                    if (resBCV3.ok) {
+                        const data3 = await resBCV3.json();
+                        if (data3 && data3.usd) {
+                            tasaBCV = parseFloat(data3.usd);
+                            if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
+                            exitoBCV = true;
+                        }
+                    }
+                } catch (err) {}
+            }
+
+            actualizarHeaderTasas();
 
             if (exitoBCV && badgeBCVCalc) {
                 badgeBCVCalc.className = "text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300 flex items-center gap-1 shadow-sm";
                 badgeBCVCalc.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> En vivo';
             }
 
+            // 2. Dólar Binance (USDT/Paralelo) en vivo
             try {
-                const resBinance1 = await fetch('https://usdt.com.ve/api/v1/rates/current');
+                const resBinance1 = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo', {
+                    headers: { 'Accept': 'application/json' }
+                });
                 if (resBinance1.ok) {
                     const dataB1 = await resBinance1.json();
-                    if (dataB1 && dataB1.buy_rate && tasaBinanceInput) {
-                        tasaBinanceInput.value = parseFloat(dataB1.buy_rate).toFixed(2);
+                    if (dataB1 && (dataB1.promedio || dataB1.precio) && tasaBinanceInput) {
+                        tasaBinanceInput.value = parseFloat(dataB1.promedio || dataB1.precio).toFixed(2);
                         exitoBinance = true;
                     }
                 }
@@ -1295,11 +1323,24 @@
 
             if (!exitoBinance) {
                 try {
-                    const resBinance2 = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
+                    const resBinance2 = await fetch('https://usdt.com.ve/api/v1/rates/current');
                     if (resBinance2.ok) {
                         const dataB2 = await resBinance2.json();
-                        if (dataB2 && dataB2.promedio && tasaBinanceInput) {
-                            tasaBinanceInput.value = parseFloat(dataB2.promedio).toFixed(2);
+                        if (dataB2 && dataB2.buy_rate && tasaBinanceInput) {
+                            tasaBinanceInput.value = parseFloat(dataB2.buy_rate).toFixed(2);
+                            exitoBinance = true;
+                        }
+                    }
+                } catch (err) {}
+            }
+
+            if (!exitoBinance) {
+                try {
+                    const resBinance3 = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=enparalelovzla');
+                    if (resBinance3.ok) {
+                        const dataB3 = await resBinance3.json();
+                        if (dataB3 && dataB3.monedas && dataB3.monedas.usd && dataB3.monedas.usd.promedio && tasaBinanceInput) {
+                            tasaBinanceInput.value = parseFloat(dataB3.monedas.usd.promedio).toFixed(2);
                             exitoBinance = true;
                         }
                     }
@@ -1314,6 +1355,8 @@
             if (syncIconCalc) syncIconCalc.classList.remove('fa-spin');
             calcularCalculadora();
             renderInventario();
+            renderFacturacionTabla();
+            renderPresupuestoTabla();
 
             const ahora = new Date();
             const horaStr = ahora.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
