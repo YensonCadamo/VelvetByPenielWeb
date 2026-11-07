@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.static(__dirname)); // Sirve el archivo index.html automáticamente
 
 // Conexión a MongoDB Atlas mediante variable de entorno
-const MONGODB_URI = process.env.MONGODB_URI || "tu_enlace_de_conexion_aqui";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/velvet_db?retryWrites=true&w=majority";
 
 mongoose.connect(MONGODB_URI)
     .then(async () => {
