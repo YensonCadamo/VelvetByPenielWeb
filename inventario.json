@@ -136,5 +136,17 @@
     "nombre": "[VP-813687] camiasas Oversize | F: 06/11/2026, 08:59 p. m.",
     "cantidad": 100,
     "precio": 15
+  },
+  {
+    "id": 1794013368379,
+    "nombre": "[HISTORIAL_ESCANEO] {\"codigo\":\"6901232008588\",\"nombre\":\"Pantalón MTK\",\"precio\":17,\"fecha\":\"06/11/2026, 09:02:47 p. m.\",\"timestamp\":1794013367920}",
+    "cantidad": 1,
+    "precio": 0
+  },
+  {
+    "id": 1794013373843,
+    "nombre": "[HISTORIAL_ESCANEO] {\"codigo\":\"6901232008588\",\"nombre\":\"Pantalón MTK\",\"precio\":17,\"fecha\":\"06/11/2026, 09:02:53 p. m.\",\"timestamp\":1794013373409}",
+    "cantidad": 1,
+    "precio": 0
   }
 ]
