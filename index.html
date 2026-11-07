@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Velvet By Peniel - Inventario, Historial de Escaneos, Calculadora, Presupuesto & Facturación</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Cormorant Garamond y Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Html5-QRCode para escáner en vivo -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- JsBarcode para Códigos de Barras -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- html2canvas para Exportar Etiqueta PNG en Alta Calidad -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pastel: {
+                            50: '#fff5f7',
+                            100: '#ffe3ec',
+                            200: '#ffccd8',
+                            300: '#ffb3c6',
+                            400: '#ff8fab',
+                            500: '#fb6f92',
+                            600: '#e0577a',
+                            700: '#701a43',
+                            bg: '#fff9fa'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fff9fa;
+            font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-tab.active {
+            background-color: #fb6f92;
+            color: white;
+            box-shadow: 0 4px 12px rgba(251, 111, 146, 0.3);
+        }
+        #reader video {
+            width: 100% !important;
+            height: auto !important;
+            border-radius: 16px;
+            object-fit: cover;
+        }
+        @keyframes shrink {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        .animate-progress {
+            animation: shrink 10s linear forwards;
+        }
+        .dropdown-menu {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: top;
+        }
+        .dropdown-menu.hidden-dropdown {
+            opacity: 0;
+            transform: scaleY(0.95) translateY(-8px);
+            pointer-events: none;
+            visibility: hidden;
+        }
+        .dropdown-menu.show-dropdown {
+            opacity: 1;
+            transform: scaleY(1) translateY(0);
+            pointer-events: auto;
+            visibility: visible;
+        }
+        input, select, button {
+            font-size: 16px !important;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased pb-20">
+
+    <!-- Header / Navegación Principal Móvil Optimizada -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-pastel-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-4xl mx-auto px-3 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center justify-between w-full sm:w-auto">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-pastel-100 text-pastel-700 p-2 rounded-xl">
+                        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold text-slate-800 leading-tight font-serif">Velvet By Peniel</h1>
+                        <p class="text-[9px] text-pastel-500 font-medium">Sistema Móvil Sincronizado</p>
+                    </div>
+                </div>
+
+                <!-- Tasa BCV Compacta Móvil -->
+                <div onclick="forzarActualizacionBCV()" class="sm:hidden bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center space-x-1.5 cursor-pointer active:scale-95 transition">
+                    <i data-lucide="banknote" class="w-3.5 h-3.5 text-emerald-600"></i>
+                    <div>
+                        <div class="text-[8px] font-bold text-emerald-700 uppercase leading-none">BCV</div>
+                        <div id="tasa-bcv-mobile" class="text-xs font-black text-slate-800">...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zona de Navegación con Menú Desplegable Rosa Pastel -->
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-center">
+                <button onclick="switchTab('escaner')" id="tab-escaner" class="nav-tab active flex items-center space-x-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shadow-sm">
+                    <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
+                    <span>Escanear</span>
+                </button>
+
+                <!-- Menú Desplegable Unificado (Pide Clave velvet1) -->
+                <div class="relative">
+                    <button onclick="toggleDropdown()" id="btn-dropdown-main" class="flex items-center space-x-2 bg-pastel-100 hover:bg-pastel-200 text-pastel-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border border-pastel-300 active:scale-95">
+                        <i class="fa-solid fa-layer-group text-pastel-600"></i>
+                        <span id="dropdown-title-text">Menú Principal</span>
+                        <i id="dropdown-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
+                    </button>
+
+                    <!-- Panel Desplegable -->
+                    <div id="dropdown-panel" class="dropdown-menu hidden-dropdown absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border-2 border-pastel-300 py-2 z-50 overflow-hidden divide-y divide-pastel-100">
+                        <div class="px-3 py-1.5 text-[10px] font-extrabold text-pastel-500 uppercase tracking-wider">
+                            Opciones del Sistema
+                        </div>
+                        
+                        <div class="py-1">
+                            <button onclick="solicitarClaveYAcceder('facturacion')" class="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-pastel-100/70 hover:text-pastel-700 flex items-center space-x-2.5 transition active:bg-pastel-200">
+                                <span class="w-7 h-7 rounded-xl bg-pastel-100 text-pastel-600 flex items-center justify-center shadow-inner"><i data-lucide="file-text" class="w-3.5 h-3.5"></i></span>
+                                <span>Facturación</span>
+                            </button>
+
+                            <button onclick="solicitarClaveYAcceder('calculadora')" class="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-pastel-100/70 hover:text-pastel-700 flex items-center space-x-2.5 transition active:bg-pastel-200">
+                                <span class="w-7 h-7 rounded-xl bg-pastel-100 text-pastel-600 flex items-center justify-center shadow-inner"><i class="fa-solid fa-calculator text-xs"></i></span>
+                                <span>Calculadora</span>
+                            </button>
+
+                            <button onclick="solicitarClaveYAcceder('inventario')" class="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-pastel-100/70 hover:text-pastel-700 flex items-center space-x-2.5 transition active:bg-pastel-200">
+                                <span class="w-7 h-7 rounded-xl bg-pastel-100 text-pastel-600 flex items-center justify-center shadow-inner"><i data-lucide="shirt" class="w-3.5 h-3.5"></i></span>
+                                <span>Inventario</span>
+                            </button>
+
+                            <button onclick="solicitarClaveYAcceder('presupuesto')" class="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-pastel-100/70 hover:text-pastel-700 flex items-center space-x-2.5 transition active:bg-pastel-200">
+                                <span class="w-7 h-7 rounded-xl bg-pastel-100 text-pastel-600 flex items-center justify-center shadow-inner"><i data-lucide="receipt" class="w-3.5 h-3.5"></i></span>
+                                <span>Presupuesto</span>
+                            </button>
+
+                            <button onclick="solicitarClaveYAcceder('historial')" class="w-full text-left px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-pastel-100/70 hover:text-pastel-700 flex items-center space-x-2.5 transition active:bg-pastel-200">
+                                <span class="w-7 h-7 rounded-xl bg-pastel-100 text-pastel-600 flex items-center justify-center shadow-inner"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i></span>
+                                <span>Historial de Escaneos</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasa BCV Desktop -->
+            <div onclick="forzarActualizacionBCV()" class="hidden sm:flex bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl items-center space-x-2 cursor-pointer hover:shadow-sm transition">
+                <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
+                <div>
+                    <div class="text-[10px] font-bold text-emerald-700 uppercase leading-none">Tasa BCV</div>
+                    <div id="tasa-bcv-desktop" class="text-xs font-black text-slate-800">Cargando...</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-3 mt-4">
+
+        <!-- ================= PESTAÑA 1: ZONA EXCLUSIVA DE ESCANEO ================= -->
+        <section id="section-escaner" class="space-y-4">
+            <div class="bg-white p-6 rounded-3xl border-2 border-pastel-200 shadow-sm space-y-5 text-center max-w-md mx-auto">
+                <div class="bg-pastel-500 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-pastel-200">
+                    <i data-lucide="scan" class="w-9 h-9"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-slate-800 text-lg">Cámara de Escaneo Rápido</h2>
+                    <p class="text-xs text-slate-400 mt-1">Ideal para teléfonos sin pistola o lector USB. Abre la cámara directamente para consultar precios y stock de forma continua.</p>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="iniciarEscaneoAutomatico('inventario')" class="w-full bg-pastel-500 hover:bg-pastel-600 active:scale-98 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-pastel-200 transition flex items-center justify-center space-x-2.5 text-sm">
+                        <i data-lucide="camera" class="w-5 h-5"></i>
+                        <span>Abrir Cámara de Escaneo Continuo</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm flex items-center justify-between text-xs text-slate-500 max-w-md mx-auto">
+                <span>Estado BD: <strong id="sync-status" class="text-emerald-600 font-semibold">Sincronizando...</strong></span>
+                <button onclick="solicitarClaveYAcceder('inventario')" class="text-pastel-700 font-bold hover:underline flex items-center space-x-1">
+                    <span>Ver inventario</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= PESTAÑA: FACTURACIÓN & CONSULTA RÁPIDA ================= -->
+        <section id="section-facturacion" class="space-y-4 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-3">
+                    <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                                <i data-lucide="user-check" class="w-4 h-4 text-pastel-500"></i>
+                                <span>Datos de Facturación</span>
+                            </h3>
+                            <label class="flex items-center space-x-1.5 cursor-pointer bg-pastel-50 hover:bg-pastel-100 px-2 py-1 rounded-lg border border-pastel-200 transition">
+                                <input type="checkbox" id="check-no-aplica" onchange="toggleNoAplicaCliente(this)" class="w-3.5 h-3.5 text-pastel-600 rounded focus:ring-pastel-400">
+                                <span class="text-[10px] font-bold text-pastel-700">No aplica (Solo consulta)</span>
+                            </label>
+                        </div>
+                        
+                        <div id="contenedor-inputs-cliente" class="space-y-3 transition-all duration-300">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre Completo del Cliente</label>
+                                <input type="text" id="fact-cliente" placeholder="Ej: Ana María Rojas" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1">WhatsApp / Teléfono (Ej: 04129420724)</label>
+                                <input type="text" id="fact-telefono" placeholder="Ej: 04120000000" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                        <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                            <i data-lucide="scan" class="w-4 h-4 text-pastel-500"></i>
+                            <span>Escanear o Agregar Prenda</span>
+                        </h3>
+
+                        <button onclick="iniciarEscaneoAutomatico('facturacion')" class="w-full bg-pastel-500 hover:bg-pastel-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-sm">
+                            <i data-lucide="camera" class="w-4 h-4"></i>
+                            <span>Escanear con Cámara</span>
+                        </button>
+                        
+                        <div class="border-t border-slate-100 pt-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">O seleccionar de la lista</label>
+                            <select id="fact-select-producto" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs bg-white">
+                                <option value="">-- Seleccionar Prenda --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <input type="number" id="fact-cantidad" min="1" value="1" placeholder="Cant" class="w-16 px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs text-center font-bold">
+                            <button onclick="agregarAlFacturacionManual()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Añadir</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 space-y-3">
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border-2 border-pastel-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-pastel-100 pb-3">
+                            <div>
+                                <h2 id="titulo-recibo-vista" class="font-bold text-pastel-700 text-sm font-serif uppercase tracking-wider">RECIBO DE COMPRA FORMAL</h2>
+                                <p class="text-[10px] text-pastel-500">Velvet By Peniel</p>
+                            </div>
+                            <span class="text-[11px] text-slate-400 font-medium" id="fact-fecha"></span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="text-pastel-700 font-bold uppercase text-[9px] border-b border-pastel-100">
+                                        <th class="py-1.5">Prenda / Código</th>
+                                        <th class="py-1.5 text-center">Cant</th>
+                                        <th class="py-1.5 text-right">Subtotal ($)</th>
+                                        <th class="py-1.5 text-center w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fact-tabla-items" class="divide-y divide-slate-100">
+                                    <tr><td colspan="4" class="py-4 text-center text-slate-400 italic text-xs">Escanea o agrega prendas para ver el total.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="border-t border-dashed border-pastel-200 pt-3 flex justify-between items-center bg-pastel-50/50 p-3 rounded-xl">
+                            <span class="text-xs font-bold text-slate-700">TOTAL A COBRAR:</span>
+                            <div class="text-right">
+                                <div id="fact-total" class="text-xl font-black text-pastel-700">$0.00</div>
+                                <div id="fact-total-bs" class="text-[11px] font-bold text-emerald-600">Bs. 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-accion-factura" onclick="enviarReciboFacturaWhatsApp()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md shadow-emerald-200 transition text-xs flex items-center justify-center space-x-2">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Emitir Recibo & Enviar por WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PESTAÑA: CALCULADORA DE PRECIOS AUTOMÁTICA ================= -->
+        <section id="section-calculadora" class="space-y-4 hidden">
+            <div class="w-full max-w-xl mx-auto bg-white/95 backdrop-blur-md rounded-3xl shadow-xl overflow-hidden border-2 border-pastel-200 flex flex-col p-4 sm:p-6 space-y-4">
+                
+                <div class="text-center pb-2 border-b border-pastel-100">
+                    <h2 class="font-serif text-xl sm:text-2xl font-bold text-pastel-700">Calculadora de Precios</h2>
+                    <p class="text-xs text-pastel-500">Actualización automática USDT (Binance) y BCV</p>
+                </div>
+
+                <!-- Tasas en Tiempo Real -->
+                <div class="bg-gradient-to-r from-pastel-50 via-rose-50 to-pastel-100/70 p-3 sm:p-4 rounded-2xl border border-pastel-200 space-y-3 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-pastel-200/70 pb-2">
+                        <span class="text-[11px] font-semibold text-pastel-700 uppercase tracking-widest flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-pastel-500 text-xs"></i> Tasas en Tiempo Real
+                        </span>
+                        <button onclick="obtenerTasasEnVivoCalc()" id="btnSyncCalc" title="Actualizar tasas ahora"
+                            class="text-[10px] bg-white hover:bg-pastel-100 text-pastel-700 font-bold px-2.5 py-1.5 rounded-full border border-pastel-300 shadow-sm transition flex items-center gap-1 active:scale-95">
+                            <i id="syncIconCalc" class="fa-solid fa-rotate text-pastel-500"></i> Sincronizar
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="tasaBinance" class="block text-[10px] sm:text-[11px] font-semibold text-pastel-700 uppercase tracking-wider">
+                                    USDT (Binance)
+                                </label>
+                                <span id="badgeBinance" class="text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 flex items-center gap-0.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Buscando
+                                </span>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-pastel-400 text-xs font-semibold">Bs.</span>
+                                <input type="number" step="0.01" id="tasaBinance" placeholder="0.00" 
+                                    class="w-full pl-8 pr-2.5 py-2.5 bg-white/90 border border-pastel-200 rounded-xl text-sm font-bold text-gray-800 focus:border-pastel-400 transition shadow-inner">
+                            </div>
+                            <span class="text-[8px] font-bold text-rose-600 block mt-0.5">+10% resguardo</span>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="tasaBCVCalc" class="block text-[10px] sm:text-[11px] font-semibold text-pastel-700 uppercase tracking-wider">
+                                    Dólar BCV
+                                </label>
+                                <span id="badgeBCVCalc" class="text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 flex items-center gap-0.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Buscando
+                                </span>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-pastel-400 text-xs font-semibold">Bs.</span>
+                                <input type="number" step="0.01" id="tasaBCVCalc" placeholder="0.00" 
+                                    class="w-full pl-8 pr-2.5 py-2.5 bg-white/90 border border-pastel-200 rounded-xl text-sm font-bold text-gray-800 focus:border-pastel-400 transition shadow-inner">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-[9px] text-pastel-500/80 text-right font-medium italic pt-0.5 flex justify-between items-center">
+                        <span id="saveStatus" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-check"></i> Guardado</span>
+                        <span id="lastUpdated" class="ml-auto">Sincronizando...</span>
+                    </div>
+                </div>
+
+                <!-- Input Costo Prenda -->
+                <div class="space-y-1.5">
+                    <label for="precioCostoCalc" class="block text-[11px] font-bold text-slate-700 uppercase tracking-widest">
+                        <i class="fa-solid fa-gem text-pastel-500 me-1"></i> Costo Prenda (USDT)
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-pastel-600 font-bold text-xl">$</span>
+                        <input type="number" step="0.01" id="precioCostoCalc" placeholder="0.00" 
+                            class="w-full pl-8 pr-4 py-3 bg-pastel-50/70 border-2 border-pastel-200 rounded-2xl text-xl font-extrabold text-gray-900 focus:border-pastel-500 transition shadow-sm">
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Resultados -->
+                <div class="bg-gradient-to-br from-pastel-500 via-rose-500 to-pastel-600 rounded-3xl p-5 text-white shadow-xl shadow-pastel-500/30 relative overflow-hidden border border-pastel-300">
+                    <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/20 rounded-full blur-xl"></div>
+                    
+                    <div class="text-center space-y-1">
+                        <span class="text-[10px] uppercase font-bold tracking-widest text-pastel-100 bg-pastel-700/40 px-3 py-1 rounded-full inline-block">Precio Venta (Tasa BCV)</span>
+                        <div class="text-4xl sm:text-5xl font-black font-serif tracking-tight drop-shadow-md py-1" id="resPrecioBCV">
+                            $0.00
+                        </div>
+                        <div class="text-lg sm:text-xl font-extrabold text-pastel-100 tracking-wide drop-shadow-sm" id="resPrecioBs">
+                            Bs. 0,00
+                        </div>
+                    </div>
+
+                    <div class="my-4 border-t border-white/30"></div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-md border border-white/25 text-center">
+                            <span class="block text-pastel-100 text-[9px] uppercase font-bold tracking-wider">
+                                <i class="fa-solid fa-money-bill-wave me-1"></i> Divisa / Efectivo
+                            </span>
+                            <span class="font-black text-xl sm:text-2xl text-amber-200 mt-1 block font-serif drop-shadow-sm" id="resPrecioCash">$0.00</span>
+                            <span class="text-[8px] text-pastel-100 block font-semibold">+50% directo</span>
+                        </div>
+
+                        <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-md border border-white/25 text-center flex flex-col justify-center">
+                            <span class="block text-pastel-100 text-[9px] uppercase font-bold tracking-wider">
+                                <i class="fa-solid fa-chart-line me-1"></i> Ganancia (50%)
+                            </span>
+                            <span class="font-black text-xl sm:text-2xl text-emerald-200 mt-1 block font-serif drop-shadow-sm" id="resGanancia">$0.00</span>
+                            <span class="text-[8px] text-pastel-100 block font-semibold">Ganancia limpia</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PESTAÑA 3: INVENTARIO & SERVIDOR ================= -->
+        <section id="section-inventario" class="space-y-4 hidden">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-gradient-to-br from-pastel-100 to-pastel-50 p-3.5 rounded-2xl border border-pastel-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-[9px] font-semibold text-pastel-700 uppercase tracking-wider">Total Prendas</p>
+                        <h3 id="stat-total-prendas" class="text-xl font-extrabold text-slate-800 mt-0.5">0</h3>
+                    </div>
+                    <div class="bg-white p-2 rounded-xl shadow-sm text-pastel-700">
+                        <i data-lucide="tag" class="w-4 h-4"></i>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-pastel-100 to-pastel-50 p-3.5 rounded-2xl border border-pastel-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-[9px] font-semibold text-pastel-700 uppercase tracking-wider">Valor Inventario</p>
+                        <h3 id="stat-valor-total" class="text-xl font-extrabold text-slate-800 mt-0.5">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-2 rounded-xl shadow-sm text-pastel-700">
+                        <i data-lucide="dollar-sign" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Backup / Guardar Inventario (.json) -->
+            <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                        <i data-lucide="database" class="w-4 h-4 text-pastel-500"></i>
+                        <span>Respaldo de Base de Datos (GitHub)</span>
+                    </h3>
+                    <p class="text-[10px] text-slate-400">Descarga el archivo <code>inventario.json</code> con la estructura exacta para sincronizar.</p>
+                </div>
+                <button onclick="hacerBackupInventarioJSON()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition text-xs flex items-center space-x-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Descargar Backup inventario.json</span>
+                </button>
+            </div>
+
+            <!-- Formulario de Registro -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-pastel-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center space-x-1.5">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-pastel-500"></i>
+                        <span>Registrar Prenda en Servidor</span>
+                    </h2>
+                    <span class="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Base de Datos Centralizada</span>
+                </div>
+
+                <form id="form-producto" onsubmit="agregarProducto(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre / Descripción de la Prenda</label>
+                        <input type="text" id="nombreProducto" placeholder="Ej: BLUSA TERRACOTA MANGA CORTA" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-pastel-400 outline-none text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Código de Barras / SKU</label>
+                        <div class="relative">
+                            <input type="text" id="codigoProducto" placeholder="Escaneado o Auto" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-pastel-400 outline-none text-xs pr-8">
+                            <button type="button" onclick="generarCodigoAleatorio()" class="absolute right-2 top-2.5 text-pastel-500 hover:text-pastel-700" title="Generar">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Cantidad / Stock</label>
+                        <input type="number" id="cantidadProducto" min="1" value="1" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-pastel-400 outline-none text-xs">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Precio Venta ($)</label>
+                        <input type="number" id="precioVenta" step="0.01" min="0" placeholder="0.00" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-pastel-400 outline-none text-xs">
+                    </div>
+
+                    <div class="sm:col-span-2 pt-1">
+                        <button type="submit" class="w-full bg-pastel-500 hover:bg-pastel-600 active:scale-98 text-white font-bold py-3 px-4 rounded-xl shadow-md shadow-pastel-200 transition text-xs flex items-center justify-center space-x-1.5">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Guardar y Ver Vista Previa de Etiqueta</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabla de Inventario -->
+            <div class="bg-white rounded-2xl border border-pastel-200 shadow-sm overflow-hidden">
+                <div class="p-3 border-b border-pastel-100 flex flex-col sm:flex-row items-center justify-between gap-2 bg-pastel-50/50">
+                    <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                        <i data-lucide="list" class="w-3.5 h-3.5 text-pastel-500"></i>
+                        <span>Listado General Sincronizado</span>
+                    </h3>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <select id="select-orden" onchange="renderInventario()" class="px-2.5 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-600 outline-none w-full sm:w-auto">
+                            <option value="reciente">Ordenar: Más Recientes (Primero)</option>
+                            <option value="antiguo">Ordenar: Más Antiguos (Primero)</option>
+                            <option value="alfabetico">Ordenar: Alfabético (A-Z)</option>
+                        </select>
+                        <div class="relative w-full sm:w-48">
+                            <input type="text" id="search-input" onkeyup="filtrarTabla()" placeholder="Buscar prenda..." class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs outline-none">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-100">
+                            <tr>
+                                <th class="p-2.5">Código</th>
+                                <th class="p-2.5">Prenda & Fecha/Hora</th>
+                                <th class="p-2.5 text-center">Stock</th>
+                                <th class="p-2.5">P. Venta ($)</th>
+                                <th class="p-2.5">P. Venta (Bs.)</th>
+                                <th class="p-2.5 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaInventario" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="6" class="text-center py-6 text-slate-400">Cargando base de datos centralizada...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PESTAÑA 4: PRESUPUESTO WHATSAPP ================= -->
+        <section id="section-presupuesto" class="space-y-4 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-3">
+                    <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                        <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                            <i data-lucide="user-heart" class="w-4 h-4 text-pastel-500"></i>
+                            <span>Datos de la Clienta</span>
+                        </h3>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre</label>
+                            <input type="text" id="pres-cliente" placeholder="Ej: María Delgado" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">WhatsApp (Ej: 04129420724)</label>
+                            <input type="text" id="pres-telefono" placeholder="Ej: 04120000000" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs">
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                        <h3 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                            <i data-lucide="barcode" class="w-4 h-4 text-pastel-500"></i>
+                            <span>Agregar Prenda al Presupuesto</span>
+                        </h3>
+                        
+                        <div class="border-t border-slate-100 pt-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Selecciona de la lista</label>
+                            <select id="pres-select-producto" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs bg-white">
+                                <option value="">-- Seleccionar --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <input type="number" id="pres-cantidad" min="1" value="1" placeholder="Cant" class="w-16 px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-xs text-center font-bold">
+                            <button onclick="agregarAlPresupuesto()" class="flex-1 bg-pastel-500 hover:bg-pastel-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Añadir</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 space-y-3">
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border-2 border-pastel-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-pastel-100 pb-3">
+                            <div>
+                                <h2 class="font-bold text-pastel-700 text-sm font-serif">VELVET BY PENIEL</h2>
+                                <p class="text-[10px] text-pastel-500">Cotización formal</p>
+                            </div>
+                            <span class="text-[11px] text-slate-400" id="pres-fecha"></span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="text-pastel-700 font-bold uppercase text-[9px] border-b border-pastel-100">
+                                        <th class="py-1.5">Prenda</th>
+                                        <th class="py-1.5 text-center">Cant</th>
+                                        <th class="py-1.5 text-right">Subtotal</th>
+                                        <th class="py-1.5 text-center w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pres-tabla-items" class="divide-y divide-slate-100">
+                                    <tr><td colspan="4" class="py-4 text-center text-slate-400 italic text-xs">Sin prendas agregadas.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="border-t border-dashed border-pastel-200 pt-3 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">TOTAL:</span>
+                            <div class="text-right">
+                                <div id="pres-total" class="text-lg font-black text-pastel-700">$0.00</div>
+                                <div id="pres-total-bs" class="text-[11px] font-bold text-slate-400">Bs. 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="enviarWhatsApp()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md shadow-emerald-200 transition text-xs flex items-center justify-center space-x-2">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span>Enviar Presupuesto por WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PESTAÑA NUEVA: HISTORIAL DE ESCANEOS & MÁS CONSULTADAS ================= -->
+        <section id="section-historial" class="space-y-4 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-gradient-to-br from-pastel-100 to-pastel-50 p-4 rounded-2xl border border-pastel-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-pastel-700 uppercase tracking-wider">Total Escaneos Únicos</p>
+                        <h3 id="stat-total-escaneos" class="text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm text-pastel-700">
+                        <i data-lucide="scan-line" class="w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-emerald-100 to-emerald-50 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Prenda Más Consultada</p>
+                        <h3 id="stat-top-prenda" class="text-sm font-extrabold text-slate-800 mt-1 truncate max-w-[160px]">Ninguna</h3>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm text-emerald-700">
+                        <i data-lucide="award" class="w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-rose-100 to-rose-50 p-4 rounded-2xl border border-rose-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-semibold text-rose-700 uppercase tracking-wider">Menos Consultadas</p>
+                        <h3 id="stat-menos-prenda" class="text-sm font-extrabold text-slate-800 mt-1 truncate max-w-[160px]">Ninguna</h3>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm text-rose-700">
+                        <i data-lucide="trending-down" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ranking de Frecuencia de Escaneos por Prenda -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-pastel-100 pb-3">
+                    <h2 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center space-x-2">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 text-pastel-500"></i>
+                        <span>Ranking de Prendas Más y Menos Consultadas por Escaneo</span>
+                    </h2>
+                    <button onclick="limpiarHistorialEscaneosServidor()" class="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-1.5 rounded-xl border border-rose-200 transition">
+                        Reiniciar Estadísticas
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-100">
+                            <tr>
+                                <th class="p-2.5">Posición</th>
+                                <th class="p-2.5">Código / Prenda</th>
+                                <th class="p-2.5 text-center">Veces Escaneada / Consultada</th>
+                                <th class="p-2.5 text-right">Última Consulta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRankingEscaneos" class="divide-y divide-slate-100">
+                            <tr><td colspan="4" class="py-4 text-center text-slate-400 italic">Cargando estadísticas de escaneo...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial Cronológico Detallado de Escaneos -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-pastel-200 shadow-sm space-y-3">
+                <div class="border-b border-pastel-100 pb-3">
+                    <h2 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center space-x-2">
+                        <i data-lucide="history" class="w-4 h-4 text-pastel-500"></i>
+                        <span>Historial Cronológico de Escaneos en Vivo</span>
+                    </h2>
+                    <p class="text-[10px] text-slate-400">Protegido contra lecturas duplicadas en ráfaga (filtro de 5 segundos por prenda).</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-100">
+                            <tr>
+                                <th class="p-2.5">Código SKU</th>
+                                <th class="p-2.5">Prenda</th>
+                                <th class="p-2.5 text-center">Precio</th>
+                                <th class="p-2.5 text-right">Fecha y Hora de Escaneo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialEscaneosCronologico" class="divide-y divide-slate-100">
+                            <tr><td colspan="4" class="py-4 text-center text-slate-400 italic">Sin escaneos registrados aún.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODAL INGRESO DE CLAVE (velvet1) ================= -->
+    <div id="modal-clave-acceso" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3">
+        <div class="bg-white rounded-3xl p-6 max-w-xs w-full shadow-2xl border-2 border-pastel-300 text-center space-y-4 relative">
+            <div class="bg-pastel-100 text-pastel-700 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <i class="fa-solid fa-lock text-lg"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-base font-serif">Acceso Protegido</h3>
+                <p class="text-[11px] text-slate-500 mt-1">Ingresa la clave para entrar a <span id="nombre-seccion-clave" class="font-bold text-pastel-700 capitalize">esta opción</span>:</p>
+            </div>
+            <div class="relative">
+                <input type="password" id="input-clave-secreta" onkeydown="handleClaveEnter(event)" placeholder="Clave de acceso..." class="w-full px-4 py-3 rounded-xl border-2 border-pastel-200 focus:border-pastel-500 outline-none text-sm text-center font-bold tracking-widest bg-pastel-50/50">
+            </div>
+            <div class="flex space-x-2 pt-1">
+                <button onclick="cerrarClaveModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition">Cancelar</button>
+                <button onclick="verificarClaveIngreso()" class="flex-1 bg-pastel-500 hover:bg-pastel-600 active:scale-98 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-pastel-200 transition">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL VISTA PREVIA DE ETIQUETA PNG ================= -->
+    <div id="modal-preview-etiqueta" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3">
+        <div class="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-pastel-200 space-y-4 text-center relative">
+            <h3 class="font-bold text-slate-800 text-sm">Vista Previa de Etiqueta Exacta</h3>
+            
+            <div id="preview-container" class="flex justify-center items-center overflow-auto border border-pastel-200 p-2 rounded-2xl bg-slate-50 min-h-[180px]">
+                <p class="text-xs text-slate-400">Cargando vista previa...</p>
+            </div>
+
+            <div class="flex space-x-2 pt-1">
+                <button onclick="cerrarPreviewModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl text-xs transition">Cancelar</button>
+                <button onclick="confirmarDescargaPNG()" class="flex-1 bg-pastel-500 hover:bg-pastel-600 text-white font-bold py-3 rounded-xl text-xs transition">Descargar PNG</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CONTENEDOR OCULTO: ETIQUETA EXACTA ================= -->
+    <div id="print-label-box" style="position: absolute; left: -9999px; top: -9999px; background: #ffffff; padding: 24px 32px; width: 660px; text-align: center; font-family: 'Segoe UI', Arial, sans-serif; border: 2.5px solid #fb6f92; border-radius: 4px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">
+        
+        <h1 style="font-size: 28px; font-weight: 800; color: #701a43; margin: 0 0 2px 0; line-height: 1.1; letter-spacing: -0.5px;">Velvet By Peniel</h1>
+        
+        <div id="print-nombre" style="font-size: 14px; font-weight: 700; color: #701a43; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; width: 100%;"></div>
+        
+        <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 2px;">
+            <svg id="print-barcode-svg" style="width: 100%; height: 115px; display: block;"></svg>
+        </div>
+
+        <div id="print-codigo-txt" style="font-size: 15px; font-weight: 700; color: #1e293b; font-family: 'Segoe UI', Arial, sans-serif; margin-bottom: 8px; letter-spacing: 1px;"></div>
+        
+        <div id="print-precio" style="font-size: 36px; font-weight: 900; color: #701a43; line-height: 1; margin-bottom: 6px;"></div>
+        
+        <div style="font-size: 10px; font-weight: 700; color: #701a43; text-transform: uppercase; letter-spacing: 0.8px;">RÉF. DÓLAR BCV</div>
+    </div>
+
+    <!-- ================= MODAL CÁMARA ESCÁNER AUTOMÁTICO ================= -->
+    <div id="modal-scanner" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3">
+        <div class="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-pastel-200 space-y-3 relative">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+                    <i data-lucide="camera" class="w-4 h-4 text-pastel-500"></i>
+                    <span id="scanner-modal-title">Escaneando con Cámara</span>
+                </h3>
+                <div class="flex items-center space-x-1.5">
+                    <button id="btn-flash" onclick="toggleFlash()" title="Flash" class="bg-pastel-100 hover:bg-pastel-200 text-pastel-700 p-2 rounded-xl transition">
+                        <i data-lucide="flashlight" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="cerrarScannerModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="reader" class="overflow-hidden rounded-2xl border-2 border-pastel-200 bg-slate-100"></div>
+            
+            <p class="text-[11px] text-center text-slate-500">Apunta la cámara al código de barras.</p>
+        </div>
+    </div>
+
+    <!-- ================= MODAL PRENDA ENCONTRADA (10s Y REINICIO CONTINUO) ================= -->
+    <div id="modal-prenda-encontrada" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3">
+        <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl border-2 border-pastel-300 overflow-hidden relative">
+            <div class="w-full bg-pastel-100 h-1">
+                <div id="progress-bar-10s" class="bg-pastel-500 h-1 w-full animate-progress"></div>
+            </div>
+
+            <div class="p-5 space-y-4 text-center">
+                <div class="flex justify-between items-start">
+                    <span class="bg-emerald-100 text-emerald-800 text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full">
+                        Prenda Verificada en Base de Datos
+                    </span>
+                    <button onclick="cerrarPrendaEncontradaModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div>
+                    <h2 id="modal-enc-nombre" class="text-lg font-black text-slate-800 uppercase">Nombre</h2>
+                    <p class="text-[11px] text-slate-400 font-mono mt-0.5" id="modal-enc-codigo">VP-000</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5 bg-pastel-50 p-3 rounded-2xl border border-pastel-200">
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-pastel-100">
+                        <span class="text-[9px] text-pastel-700 uppercase font-bold block">Precio ($)</span>
+                        <span id="modal-enc-precio-usd" class="text-xl font-black text-slate-800">$0.00</span>
+                    </div>
+
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-emerald-100">
+                        <span class="text-[9px] text-emerald-600 uppercase font-bold block">Precio (Bs.)</span>
+                        <span id="modal-enc-precio-bcv" class="text-xl font-black text-emerald-700">Bs. 0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-[11px] text-slate-400 px-1">
+                    <span>Stock: <strong id="modal-enc-stock" class="text-slate-700">1</strong> u.</span>
+                    <span class="italic text-[10px]">Continuando en 10s...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL CÓDIGO NO REGISTRADO ================= -->
+    <div id="modal-no-registrado" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3">
+        <div class="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl border border-rose-200 text-center space-y-3">
+            <div class="bg-rose-100 text-rose-600 w-10 h-10 rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-base">Código No Registrado</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">El código <span id="codigo-detectado-txt" class="font-mono font-bold text-rose-600"></span> no existe en la base de datos.</p>
+            </div>
+            <div class="flex space-x-2 pt-1">
+                <button onclick="cerrarNoRegistradoModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Continuar Escaneando</button>
+                <button onclick="llenarFormularioConCodigo()" class="flex-1 bg-pastel-500 text-white font-bold py-2.5 rounded-xl text-xs">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="opacity-0 transition-opacity duration-300 fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs py-2.5 px-5 rounded-full shadow-2xl pointer-events-none flex items-center gap-2 border border-pink-400 z-50">
+        <i class="fa-solid fa-circle-check text-pink-400"></i>
+        <span id="toastMsg" class="tracking-wide">Notificación</span>
+    </div>
+
+    <!-- Script Robusto: Sincronización Real con Servidor y Base de Datos Centralizada (Sin LocalStorage) -->
+    <script>
+        let tasaBCV = 36.5; 
+        let productos = [];
+        let historialEscaneos = [];
+        let presupuestoItems = [];
+        let facturacionItems = [];
+        let html5QrCode = null;
+        let timerModal10s = null;
+        let codigoNoRegistradoActual = "";
+        let flashOn = false;
+        let etiquetaTemp = { codigo: '', nombre: '', precio: 0 };
+        let scannerModo = 'inventario';
+        let tabPendienteDestino = '';
+        let audioCtx = null;
+        let modoConsultaSoloVista = false;
+        let intervaloSync = null;
+        let escaneoPausado = false; 
+        const ultimosEscaneosPorCodigo = {}; // Control de tiempo por código para evitar ráfagas (antiduplicado de 5s)
+
+        let tasaBinanceInput, tasaBCVCalcInput, precioCostoCalcInput, resPrecioBCV, resPrecioBs, resPrecioCash, resGanancia, badgeBinance, badgeBCVCalc, syncIconCalc, lastUpdated;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            tasaBinanceInput = document.getElementById('tasaBinance');
+            tasaBCVCalcInput = document.getElementById('tasaBCVCalc');
+            precioCostoCalcInput = document.getElementById('precioCostoCalc');
+            resPrecioBCV = document.getElementById('resPrecioBCV');
+            resPrecioBs = document.getElementById('resPrecioBs');
+            resPrecioCash = document.getElementById('resPrecioCash');
+            resGanancia = document.getElementById('resGanancia');
+            badgeBinance = document.getElementById('badgeBinance');
+            badgeBCVCalc = document.getElementById('badgeBCVCalc');
+            syncIconCalc = document.getElementById('syncIconCalc');
+            lastUpdated = document.getElementById('lastUpdated');
+
+            if (tasaBinanceInput) tasaBinanceInput.addEventListener('input', () => { calcularCalculadora(); });
+            if (tasaBCVCalcInput) tasaBCVCalcInput.addEventListener('input', () => { calcularCalculadora(); });
+            if (precioCostoCalcInput) precioCostoCalcInput.addEventListener('input', calcularCalculadora);
+
+            lucide.createIcons();
+            cargarDatosServidor(true);
+            obtenerTasasEnVivoCalc();
+
+            intervaloSync = setInterval(() => {
+                cargarDatosServidor(false);
+            }, 5000);
+
+            const hoy = new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' });
+            if(document.getElementById('pres-fecha')) document.getElementById('pres-fecha').innerText = hoy;
+            if(document.getElementById('fact-fecha')) document.getElementById('fact-fecha').innerText = hoy;
+
+            generarCodigoAleatorio();
+
+            window.addEventListener('click', function(e) {
+                initAudioContext();
+                const dropdown = document.getElementById('dropdown-panel');
+                const btnMain = document.getElementById('btn-dropdown-main');
+                if (dropdown && btnMain && !btnMain.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show-dropdown');
+                    dropdown.classList.add('hidden-dropdown');
+                    const chevron = document.getElementById('dropdown-chevron');
+                    if (chevron) chevron.style.transform = 'rotate(0deg)';
+                }
+            }, { once: false });
+
+            window.addEventListener('touchstart', function() {
+                initAudioContext();
+            }, { once: true });
+        });
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('dropdown-panel');
+            const chevron = document.getElementById('dropdown-chevron');
+            const isOpen = dropdown.classList.contains('show-dropdown');
+
+            if (isOpen) {
+                dropdown.classList.remove('show-dropdown');
+                dropdown.classList.add('hidden-dropdown');
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                dropdown.classList.remove('hidden-dropdown');
+                dropdown.classList.add('show-dropdown');
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function solicitarClaveYAcceder(tabName) {
+            const dropdown = document.getElementById('dropdown-panel');
+            if (dropdown) {
+                dropdown.classList.remove('show-dropdown');
+                dropdown.classList.add('hidden-dropdown');
+            }
+            const chevron = document.getElementById('dropdown-chevron');
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+
+            tabPendienteDestino = tabName;
+            const labelModal = document.getElementById('nombre-seccion-clave');
+            if (labelModal) labelModal.innerText = tabName === 'historial' ? 'Historial de Escaneos' : tabName;
+
+            const inputClave = document.getElementById('input-clave-secreta');
+            if (inputClave) inputClave.value = '';
+
+            const modalClave = document.getElementById('modal-clave-acceso');
+            if (modalClave) modalClave.classList.remove('hidden');
+            
+            setTimeout(() => {
+                if (inputClave) inputClave.focus();
+            }, 200);
+        }
+
+        function cerrarClaveModal() {
+            const modalClave = document.getElementById('modal-clave-acceso');
+            if (modalClave) modalClave.classList.add('hidden');
+            tabPendienteDestino = '';
+        }
+
+        function handleClaveEnter(event) {
+            if (event.key === 'Enter') {
+                verificarClaveIngreso();
+            }
+        }
+
+        function verificarClaveIngreso() {
+            const inputClave = document.getElementById('input-clave-secreta');
+            const claveIngresada = inputClave ? inputClave.value.trim() : '';
+
+            if (claveIngresada === 'velvet1') {
+                const destino = tabPendienteDestino;
+                cerrarClaveModal();
+
+                if (destino) {
+                    const titleText = document.getElementById('dropdown-title-text');
+                    if (titleText) {
+                        if (destino === 'facturacion') titleText.innerText = 'Facturación';
+                        else if (destino === 'calculadora') titleText.innerText = 'Calculadora';
+                        else if (destino === 'inventario') titleText.innerText = 'Inventario';
+                        else if (destino === 'presupuesto') titleText.innerText = 'Presupuesto';
+                        else if (destino === 'historial') titleText.innerText = 'Historial';
+                    }
+                    switchTab(destino);
+                    mostrarToast("¡Acceso concedido! 🔓");
+                }
+            } else {
+                mostrarToast("clave incorrecta", true);
+                if (inputClave) {
+                    inputClave.value = '';
+                    inputClave.focus();
+                }
+            }
+        }
+
+        function reproducirSonidoBeep() {
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(2200, now);
+                gainNode.gain.setValueAtTime(0.8, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.15);
+            } catch (e) {
+                console.log("Audio de escáner no ejecutado:", e);
+            }
+        }
+
+        async function cargarDatosServidor(mostrarNotif = false) {
+            const statusLabel = document.getElementById('sync-status');
+            try {
+                const response = await fetch('/api/inventario');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    productos = [];
+                    historialEscaneos = [];
+
+                    data.forEach(item => {
+                        let nombreLimpio = item.nombre || "";
+                        let codigoExt = "";
+                        let fechaRegistro = item.fecha || new Date().toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' });
+
+                        if (nombreLimpio.startsWith('[HISTORIAL_ESCANEO]')) {
+                            try {
+                                const jsonStr = nombreLimpio.replace('[HISTORIAL_ESCANEO]', '').trim();
+                                const escaneoData = JSON.parse(jsonStr);
+                                historialEscaneos.push(escaneoData);
+                            } catch (e) {}
+                            return;
+                        }
+
+                        if (nombreLimpio.includes('| F:')) {
+                            const partesFech = nombreLimpio.split('| F:');
+                            nombreLimpio = partesFech[0].trim();
+                            fechaRegistro = partesFech[1].trim();
+                        }
+
+                        if (nombreLimpio.startsWith('[') && nombreLimpio.includes(']')) {
+                            const partes = nombreLimpio.split(']');
+                            codigoExt = partes[0].replace('[', '').trim();
+                            nombreLimpio = partes[1].trim();
+                        }
+
+                        productos.push({
+                            id: item.id,
+                            codigo: codigoExt || `VP-${item.id}`,
+                            nombre: nombreLimpio,
+                            cantidad: parseInt(item.cantidad) || 0,
+                            precioVenta: parseFloat(item.precio) || 0,
+                            fecha: fechaRegistro,
+                            rawNombre: item.nombre
+                        });
+                    });
+
+                    if(statusLabel) { 
+                        statusLabel.innerText = "Sincronizado (Servidor)"; 
+                        statusLabel.className = "text-emerald-600 font-semibold"; 
+                    }
+                } else {
+                    throw new Error("Servidor offline");
+                }
+            } catch (error) {
+                if(statusLabel) { 
+                    statusLabel.innerText = "Sin conexión con Servidor"; 
+                    statusLabel.className = "text-rose-600 font-semibold"; 
+                }
+            } finally {
+                renderInventario();
+                renderHistorialEscaneos();
+                actualizarEstadisticas();
+                actualizarSelectPresupuesto();
+                actualizarSelectFacturacion();
+            }
+        }
+
+        async function hacerBackupInventarioJSON() {
+            try {
+                const response = await fetch('/api/inventario');
+                if (!response.ok) throw new Error("No se pudo obtener la data del servidor");
+                const dataRaw = await response.json();
+                
+                // Formateamos exactamente como el archivo inventario.json original del usuario
+                const dataJSON = JSON.stringify(dataRaw, null, 2);
+                const blob = new Blob([dataJSON], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'inventario.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                mostrarToast("Backup inventario.json descargado con éxito 📦");
+            } catch (e) {
+                // Alternativa usando la memoria local si el endpoint no estuviera disponible de inmediato
+                const backupArray = productos.map(p => ({
+                    id: p.id,
+                    nombre: p.rawNombre || `[${p.codigo}] ${p.nombre} | F: ${p.fecha}`,
+                    cantidad: p.cantidad,
+                    precio: p.precioVenta
+                }));
+                
+                // Incluimos también los de historial si existen
+                historialEscaneos.forEach((esc, idx) => {
+                    backupArray.push({
+                        id: 9999000 + idx,
+                        nombre: `[HISTORIAL_ESCANEO] ${JSON.stringify(esc)}`,
+                        cantidad: 1,
+                        precio: 0
+                    });
+                });
+
+                const dataJSON = JSON.stringify(backupArray, null, 2);
+                const blob = new Blob([dataJSON], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'inventario.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                mostrarToast("Backup de inventario generado 📦");
+            }
+        }
+
+        async function registrarEscaneoServidor(producto) {
+            const codigoKey = producto.codigo.trim().toLowerCase();
+            const ahoraTiempo = Date.now();
+
+            // Límite de seguridad de 5 segundos exactos para evitar que ráfagas de lectura añadan múltiples veces la misma prenda
+            if (ultimosEscaneosPorCodigo[codigoKey] && (ahoraTiempo - ultimosEscaneosPorCodigo[codigoKey] < 5000)) {
+                return; // Ignora el escaneo duplicado en ráfaga
+            }
+            ultimosEscaneosPorCodigo[codigoKey] = ahoraTiempo;
+
+            const fechaHoraActual = new Date().toLocaleString('es-VE', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            });
+
+            const objetoEscaneo = {
+                codigo: producto.codigo,
+                nombre: producto.nombre,
+                precio: producto.precioVenta,
+                fecha: fechaHoraActual,
+                timestamp: ahoraTiempo
+            };
+
+            const payload = {
+                nombre: `[HISTORIAL_ESCANEO] ${JSON.stringify(objetoEscaneo)}`,
+                cantidad: 1,
+                precio: 0
+            };
+
+            try {
+                await fetch('/api/inventario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                await cargarDatosServidor(false);
+            } catch (e) {}
+        }
+
+        async function limpiarHistorialEscaneosServidor() {
+            if (!confirm('¿Deseas reiniciar todas las estadísticas de escaneo y conteo de prendas?')) return;
+
+            try {
+                const response = await fetch('/api/inventario');
+                if (response.ok) {
+                    const data = await response.json();
+                    for (let item of data) {
+                        if (item.nombre && item.nombre.startsWith('[HISTORIAL_ESCANEO]')) {
+                            await fetch(`/api/inventario/${item.id}`, { method: 'DELETE' });
+                        }
+                    }
+                }
+                await cargarDatosServidor(false);
+                mostrarToast("Estadísticas de escaneo reiniciadas 🧹");
+            } catch (e) {
+                mostrarToast("Error al reiniciar estadísticas", true);
+            }
+        }
+
+        async function obtenerTasasEnVivoCalc() {
+            if (syncIconCalc) syncIconCalc.classList.add('fa-spin');
+            if (lastUpdated) lastUpdated.innerText = "Sincronizando...";
+
+            if (badgeBinance) {
+                badgeBinance.className = "text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1";
+                badgeBinance.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Obteniendo';
+            }
+            if (badgeBCVCalc) {
+                badgeBCVCalc.className = "text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1";
+                badgeBCVCalc.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Obteniendo';
+            }
+
+            let exitoBCV = false;
+            let exitoBinance = false;
+
+            try {
+                const resBCV = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                if (resBCV.ok) {
+                    const dataBCV = await resBCV.json();
+                    if (dataBCV && dataBCV.promedio) {
+                        tasaBCV = parseFloat(dataBCV.promedio);
+                        if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
+                        exitoBCV = true;
+                    }
+                }
+            } catch (err) {}
+
+            if (!exitoBCV) {
+                try {
+                    const resBCVAlt = await fetch('https://rates.dolarvzla.com/bcv/current.json');
+                    const dataAlt = await resBCVAlt.json();
+                    if (dataAlt && dataAlt.current && dataAlt.current.usd) {
+                        tasaBCV = parseFloat(dataAlt.current.usd);
+                        if (tasaBCVCalcInput) tasaBCVCalcInput.value = tasaBCV.toFixed(2);
+                        exitoBCV = true;
+                    }
+                } catch (err) {}
+            }
+
+            const txtBCV = `Bs. ${tasaBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            if(document.getElementById('tasa-bcv-mobile')) document.getElementById('tasa-bcv-mobile').innerText = txtBCV;
+            if(document.getElementById('tasa-bcv-desktop')) document.getElementById('tasa-bcv-desktop').innerText = txtBCV;
+
+            if (exitoBCV && badgeBCVCalc) {
+                badgeBCVCalc.className = "text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300 flex items-center gap-1 shadow-sm";
+                badgeBCVCalc.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> En vivo';
+            }
+
+            try {
+                const resBinance1 = await fetch('https://usdt.com.ve/api/v1/rates/current');
+                if (resBinance1.ok) {
+                    const dataB1 = await resBinance1.json();
+                    if (dataB1 && dataB1.buy_rate && tasaBinanceInput) {
+                        tasaBinanceInput.value = parseFloat(dataB1.buy_rate).toFixed(2);
+                        exitoBinance = true;
+                    }
+                }
+            } catch (err) {}
+
+            if (!exitoBinance) {
+                try {
+                    const resBinance2 = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
+                    if (resBinance2.ok) {
+                        const dataB2 = await resBinance2.json();
+                        if (dataB2 && dataB2.promedio && tasaBinanceInput) {
+                            tasaBinanceInput.value = parseFloat(dataB2.promedio).toFixed(2);
+                            exitoBinance = true;
+                        }
+                    }
+                } catch (err) {}
+            }
+
+            if (exitoBinance && badgeBinance) {
+                badgeBinance.className = "text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300 flex items-center gap-1 shadow-sm";
+                badgeBinance.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> En vivo';
+            }
+
+            if (syncIconCalc) syncIconCalc.classList.remove('fa-spin');
+            calcularCalculadora();
+            renderInventario();
+
+            const ahora = new Date();
+            const horaStr = ahora.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+            if (lastUpdated) lastUpdated.innerText = `Actualizado ${horaStr}`;
+        }
+
+        function calcularCalculadora() {
+            if (!tasaBinanceInput || !tasaBCVCalcInput || !precioCostoCalcInput) return;
+            const tasaBinanceBase = parseFloat(tasaBinanceInput.value) || 0;
+            const tasaBCVVal = parseFloat(tasaBCVCalcInput.value) || tasaBCV;
+            const costoUSDT = parseFloat(precioCostoCalcInput.value) || 0;
+
+            if (costoUSDT <= 0) {
+                if (resPrecioBCV) resPrecioBCV.innerText = "$0.00";
+                if (resPrecioBs) resPrecioBs.innerText = "Bs. 0,00";
+                if (resPrecioCash) resPrecioCash.innerText = "$0.00";
+                if (resGanancia) resGanancia.innerText = "$0.00";
+                return;
+            }
+
+            const tasaBinanceEfectiva = tasaBinanceBase * 1.10;
+            const precioVentaCash = costoUSDT * 1.50;
+            if (resPrecioCash) resPrecioCash.innerText = `$${precioVentaCash.toFixed(2)}`;
+
+            if (tasaBinanceBase <= 0 || tasaBCVVal <= 0) {
+                if (resPrecioBCV) resPrecioBCV.innerText = "$0.00";
+                if (resPrecioBs) resPrecioBs.innerText = "Bs. 0,00";
+                if (resGanancia) resGanancia.innerText = `$${(precioVentaCash - costoUSDT).toFixed(2)}`;
+                return;
+            }
+
+            const costoEnBs = costoUSDT * tasaBinanceEfectiva;
+            const precioVentaBs = costoEnBs * 1.50;
+            const precioVentaBCV = precioVentaBs / tasaBCVVal;
+            const gananciaDolarBCV = precioVentaBCV * (1 / 3);
+
+            if (resPrecioBCV) resPrecioBCV.innerText = `$${precioVentaBCV.toFixed(2)}`;
+            if (resPrecioBs) resPrecioBs.innerText = `Bs. ${precioVentaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            if (resGanancia) resGanancia.innerText = `$${gananciaDolarBCV.toFixed(2)}`;
+        }
+
+        function forzarActualizacionBCV() {
+            obtenerTasasEnVivoCalc();
+        }
+
+        function switchTab(tab) {
+            const secEsc = document.getElementById('section-escaner');
+            const secFact = document.getElementById('section-facturacion');
+            const secCalc = document.getElementById('section-calculadora');
+            const secInv = document.getElementById('section-inventario');
+            const secPres = document.getElementById('section-presupuesto');
+            const secHist = document.getElementById('section-historial');
+            
+            const tabEsc = document.getElementById('tab-escaner');
+            const btnDropdownMain = document.getElementById('btn-dropdown-main');
+
+            if (secEsc) secEsc.classList.add('hidden');
+            if (secFact) secFact.classList.add('hidden');
+            if (secCalc) secCalc.classList.add('hidden');
+            if (secInv) secInv.classList.add('hidden');
+            if (secPres) secPres.classList.add('hidden');
+            if (secHist) secHist.classList.add('hidden');
+
+            if (tabEsc) {
+                tabEsc.classList.remove('active');
+                tabEsc.classList.add('text-slate-600');
+            }
+            if (btnDropdownMain) {
+                btnDropdownMain.classList.remove('bg-pastel-500', 'text-white');
+                btnDropdownMain.classList.add('bg-pastel-100', 'text-pastel-700');
+            }
+
+            if (tab === 'escaner') {
+                if (secEsc) secEsc.classList.remove('hidden');
+                if (tabEsc) {
+                    tabEsc.classList.add('active');
+                    tabEsc.classList.remove('text-slate-600');
+                }
+                const titleText = document.getElementById('dropdown-title-text');
+                if (titleText) titleText.innerText = 'Menú Principal';
+                iniciarEscaneoAutomatico('inventario');
+            } else {
+                if (btnDropdownMain) {
+                    btnDropdownMain.classList.remove('bg-pastel-100', 'text-pastel-700');
+                    btnDropdownMain.classList.add('bg-pastel-500', 'text-white');
+                }
+
+                if (tab === 'facturacion') {
+                    if (secFact) secFact.classList.remove('hidden');
+                    actualizarSelectFacturacion();
+                } else if (tab === 'calculadora') {
+                    if (secCalc) secCalc.classList.remove('hidden');
+                    calcularCalculadora();
+                } else if (tab === 'inventario') {
+                    if (secInv) secInv.classList.remove('hidden');
+                    cargarDatosServidor(true);
+                } else if (tab === 'presupuesto') {
+                    if (secPres) secPres.classList.remove('hidden');
+                    actualizarSelectPresupuesto();
+                } else if (tab === 'historial') {
+                    if (secHist) secHist.classList.remove('hidden');
+                    renderHistorialEscaneos();
+                }
+            }
+            lucide.createIcons();
+        }
+
+        function toggleNoAplicaCliente(checkbox) {
+            modoConsultaSoloVista = checkbox.checked;
+            const contenedorInputs = document.getElementById('contenedor-inputs-cliente');
+            const tituloRecibo = document.getElementById('titulo-recibo-vista');
+            const btnAccion = document.getElementById('btn-accion-factura');
+
+            if (modoConsultaSoloVista) {
+                contenedorInputs.style.opacity = '0.3';
+                contenedorInputs.style.pointerEvents = 'none';
+                tituloRecibo.innerText = 'CONSULTA RÁPIDA / TOTAL DE COMPRA';
+                btnAccion.innerHTML = '<i data-lucide="calculator" class="w-4 h-4"></i><span>Modo Consulta Activo (No descuenta stock ni envía WhatsApp)</span>';
+                btnAccion.className = 'w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md shadow-amber-200 transition text-xs flex items-center justify-center space-x-2';
+                mostrarToast("Modo consulta rápida activado 🔍");
+            } else {
+                contenedorInputs.style.opacity = '1';
+                contenedorInputs.style.pointerEvents = 'auto';
+                tituloRecibo.innerText = 'RECIBO DE COMPRA FORMAL';
+                btnAccion.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i><span>Emitir Recibo & Enviar por WhatsApp</span>';
+                btnAccion.className = 'w-full bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md shadow-emerald-200 transition text-xs flex items-center justify-center space-x-2';
+                mostrarToast("Modo facturación normal activado 🧾");
+            }
+            lucide.createIcons();
+        }
+
+        async function buscarYMostrarPrenda(codigo) {
+            if (escaneoPausado) return;
+            escaneoPausado = true;
+
+            const codigoLimpio = codigo.trim().toLowerCase();
+            const producto = productos.find(p => p.codigo.trim().toLowerCase() === codigoLimpio || p.nombre.toLowerCase().includes(codigoLimpio));
+            
+            if (scannerModo === 'facturacion') {
+                if (producto) {
+                    agregarPrendaAFacturaObj(producto, 1);
+                    cerrarScannerModal();
+                    mostrarToast(`¡${producto.nombre} agregada a la lista! 🛍️`);
+                } else {
+                    alert(`El código ${codigo} no existe en la base de datos.`);
+                    escaneoPausado = false;
+                }
+                return;
+            }
+
+            if (producto) {
+                await registrarEscaneoServidor(producto);
+                mostrarPrendaEncontradaModal(producto);
+            } else {
+                codigoNoRegistradoActual = codigo;
+                document.getElementById('codigo-detectado-txt').innerText = codigo;
+                document.getElementById('modal-no-registrado').classList.remove('hidden');
+                if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.pause();
+                }
+            }
+        }
+
+        function mostrarPrendaEncontradaModal(producto) {
+            document.getElementById('modal-enc-nombre').innerText = producto.nombre;
+            document.getElementById('modal-enc-codigo').innerText = producto.codigo;
+            document.getElementById('modal-enc-precio-usd').innerText = `$${parseFloat(producto.precioVenta).toFixed(2)}`;
+            const precioBcvBs = producto.precioVenta * tasaBCV;
+            document.getElementById('modal-enc-precio-bcv').innerText = `Bs. ${precioBcvBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('modal-enc-stock').innerText = producto.cantidad;
+
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.pause();
+            }
+
+            const modal = document.getElementById('modal-prenda-encontrada');
+            modal.classList.remove('hidden');
+
+            const barra = document.getElementById('progress-bar-10s');
+            barra.classList.remove('animate-progress');
+            void barra.offsetWidth;
+            barra.classList.add('animate-progress');
+
+            if(timerModal10s) clearTimeout(timerModal10s);
+            timerModal10s = setTimeout(() => {
+                cerrarPrendaEncontradaModal();
+            }, 10000);
+        }
+
+        function cerrarPrendaEncontradaModal() {
+            document.getElementById('modal-prenda-encontrada').classList.add('hidden');
+            if(timerModal10s) clearTimeout(timerModal10s);
+            escaneoPausado = false;
+            if (html5QrCode) {
+                try {
+                    html5QrCode.resume();
+                } catch (e) {}
+            }
+        }
+
+        function cerrarNoRegistradoModal() {
+            document.getElementById('modal-no-registrado').classList.add('hidden');
+            escaneoPausado = false;
+            if (html5QrCode) {
+                try {
+                    html5QrCode.resume();
+                } catch (e) {}
+            }
+        }
+
+        function llenarFormularioConCodigo() {
+            document.getElementById('modal-no-registrado').classList.add('hidden');
+            escaneoPausado = false;
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                    solicitarClaveYAcceder('inventario');
+                    document.getElementById('codigoProducto').value = codigoNoRegistradoActual;
+                }).catch(() => {
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                    solicitarClaveYAcceder('inventario');
+                    document.getElementById('codigoProducto').value = codigoNoRegistradoActual;
+                });
+            } else {
+                document.getElementById('modal-scanner').classList.add('hidden');
+                solicitarClaveYAcceder('inventario');
+                document.getElementById('codigoProducto').value = codigoNoRegistradoActual;
+            }
+        }
+
+        function generarCodigoAleatorio() {
+            const aleatorio = Math.floor(100000 + Math.random() * 900000);
+            const inputCod = document.getElementById('codigoProducto');
+            if (inputCod) inputCod.value = `VP-${aleatorio}`;
+        }
+
+        async function previsualizarEtiqueta(codigo, nombre, precio) {
+            etiquetaTemp = { codigo, nombre, precio };
+            document.getElementById('print-nombre').innerText = nombre;
+            document.getElementById('print-precio').innerText = `$${parseFloat(precio).toFixed(2)}`;
+            document.getElementById('print-codigo-txt').innerText = codigo;
+
+            JsBarcode("#print-barcode-svg", codigo, {
+                format: "CODE128",
+                width: 5.0,
+                height: 140,
+                displayValue: false,
+                margin: 20
+            });
+
+            const box = document.getElementById('print-label-box');
+            const previewContainer = document.getElementById('preview-container');
+            previewContainer.innerHTML = '<p class="text-xs text-slate-400 py-6">Generando vista previa...</p>';
+            
+            document.getElementById('modal-preview-etiqueta').classList.remove('hidden');
+
+            try {
+                const canvas = await html2canvas(box, { scale: 3, useCORS: true });
+                previewContainer.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.className = 'max-h-56 rounded-xl shadow-md border border-pastel-200 object-contain mx-auto';
+                previewContainer.appendChild(img);
+            } catch (e) {
+                previewContainer.innerHTML = '<p class="text-xs text-rose-500">Error al generar vista previa</p>';
+            }
+        }
+
+        function cerrarPreviewModal() {
+            document.getElementById('modal-preview-etiqueta').classList.add('hidden');
+        }
+
+        function confirmarDescargaPNG() {
+            const { codigo, nombre, precio } = etiquetaTemp;
+            document.getElementById('print-nombre').innerText = nombre;
+            document.getElementById('print-precio').innerText = `$${parseFloat(precio).toFixed(2)}`;
+            document.getElementById('print-codigo-txt').innerText = codigo;
+
+            JsBarcode("#print-barcode-svg", codigo, {
+                format: "CODE128",
+                width: 5.0,
+                height: 140,
+                displayValue: false,
+                margin: 20
+            });
+
+            const box = document.getElementById('print-label-box');
+            
+            html2canvas(box, { scale: 3, useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Etiqueta-Velvet-${codigo}-${nombre.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                cerrarPreviewModal();
+            });
+        }
+
+        async function agregarProducto(event) {
+            event.preventDefault();
+            const nombre = document.getElementById('nombreProducto').value.trim();
+            const codigo = document.getElementById('codigoProducto').value.trim();
+            const cantidad = parseInt(document.getElementById('cantidadProducto').value) || 1;
+            const precioVenta = parseFloat(document.getElementById('precioVenta').value) || 0;
+            
+            const fechaHoraActual = new Date().toLocaleString('es-VE', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+            });
+
+            const payload = {
+                nombre: `[${codigo}] ${nombre} | F: ${fechaHoraActual}`,
+                cantidad: cantidad,
+                precio: precioVenta
+            };
+
+            try {
+                await fetch('/api/inventario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                await cargarDatosServidor(false);
+            } catch (error) {}
+
+            document.getElementById('form-producto').reset();
+            generarCodigoAleatorio();
+            previsualizarEtiqueta(codigo, nombre, precioVenta);
+        }
+
+        async function eliminarProducto(id) {
+            if (confirm('¿Eliminar esta prenda?')) {
+                try {
+                    await fetch(`/api/inventario/${id}`, { method: 'DELETE' });
+                    await cargarDatosServidor(false);
+                    mostrarToast("Prenda eliminada");
+                } catch (error) {}
+            }
+        }
+
+        function renderInventario(filtro = '') {
+            const tbody = document.getElementById('tablaInventario');
+            if (!tbody) return;
+            const selectOrden = document.getElementById('select-orden');
+            const ordenCriterio = selectOrden ? selectOrden.value : 'reciente';
+            tbody.innerHTML = '';
+
+            let filtrados = productos.filter(p => 
+                p.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
+                p.codigo.toLowerCase().includes(filtro.toLowerCase())
+            );
+
+            filtrados.sort((a, b) => {
+                if (ordenCriterio === 'reciente') {
+                    return b.id - a.id;
+                } else if (ordenCriterio === 'antiguo') {
+                    return a.id - b.id;
+                } else if (ordenCriterio === 'alfabetico') {
+                    return a.nombre.localeCompare(b.nombre);
+                }
+            });
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 italic">Sin prendas registradas.</td></tr>`;
+                return;
+            }
+
+            filtrados.forEach(p => {
+                const precioBs = p.precioVenta * tasaBCV;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-pastel-50/50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-2.5 font-mono font-bold text-pastel-700">${p.codigo}</td>
+                    <td class="p-2.5">
+                        <div class="font-semibold text-slate-800">${p.nombre}</div>
+                        <div class="text-[10px] text-slate-400">🕒 ${p.fecha}</div>
+                    </td>
+                    <td class="p-2.5 text-center"><span class="bg-pastel-100 text-pastel-700 px-2 py-0.5 rounded-md font-bold">${p.cantidad}</span></td>
+                    <td class="p-2.5 font-bold text-slate-800">$${p.precioVenta.toFixed(2)}</td>
+                    <td class="p-2.5 font-bold text-emerald-700">Bs. ${precioBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="p-2.5 text-right space-x-1">
+                        <button onclick="previsualizarEtiqueta('${p.codigo}', '${p.nombre.replace(/'/g, "\\'")}', ${p.precioVenta})" class="p-2 bg-pastel-100 text-pastel-700 hover:bg-pastel-200 rounded-lg transition" title="Ver Etiqueta"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                        <button onclick="eliminarProducto(${p.id})" class="p-2 text-rose-400 hover:bg-rose-50 rounded-lg transition" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function renderHistorialEscaneos() {
+            const tbodyRanking = document.getElementById('tablaRankingEscaneos');
+            const tbodyCronologico = document.getElementById('tablaHistorialEscaneosCronologico');
+            const statTotalEscaneos = document.getElementById('stat-total-escaneos');
+            const statTopPrenda = document.getElementById('stat-top-prenda');
+            const statMenosPrenda = document.getElementById('stat-menos-prenda');
+
+            if (!tbodyRanking || !tbodyCronologico) return;
+
+            if (statTotalEscaneos) statTotalEscaneos.innerText = historialEscaneos.length;
+
+            const conteoPorPrenda = {};
+            historialEscaneos.forEach(esc => {
+                if (!conteoPorPrenda[esc.codigo]) {
+                    conteoPorPrenda[esc.codigo] = {
+                        codigo: esc.codigo,
+                        nombre: esc.nombre,
+                        precio: esc.precio,
+                        totalConsultas: 0,
+                        ultimaFecha: esc.fecha
+                    };
+                }
+                conteoPorPrenda[esc.codigo].totalConsultas++;
+                conteoPorPrenda[esc.codigo].ultimaFecha = esc.fecha;
+            });
+
+            const rankingArray = Object.values(conteoPorPrenda).sort((a, b) => b.totalConsultas - a.totalConsultas);
+
+            if (rankingArray.length > 0) {
+                if (statTopPrenda) statTopPrenda.innerText = `${rankingArray[0].nombre} (${rankingArray[0].totalConsultas}v)`;
+                if (statMenosPrenda) statMenosPrenda.innerText = `${rankingArray[rankingArray.length - 1].nombre} (${rankingArray[rankingArray.length - 1].totalConsultas}v)`;
+            } else {
+                if (statTopPrenda) statTopPrenda.innerText = 'Ninguna';
+                if (statMenosPrenda) statMenosPrenda.innerText = 'Ninguna';
+            }
+
+            tbodyRanking.innerHTML = '';
+            if (rankingArray.length === 0) {
+                tbodyRanking.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400 italic">Sin datos de escaneos todavía.</td></tr>`;
+            } else {
+                rankingArray.forEach((item, index) => {
+                    let badgePos = "bg-slate-100 text-slate-700";
+                    if (index === 0) badgePos = "bg-amber-100 text-amber-800 font-extrabold";
+                    else if (index === 1) badgePos = "bg-slate-200 text-slate-800 font-bold";
+                    else if (index === 2) badgePos = "bg-orange-100 text-orange-800 font-bold";
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-pastel-50/50 transition border-b border-slate-100";
+                    tr.innerHTML = `
+                        <td class="p-2.5"><span class="${badgePos} px-2.5 py-1 rounded-full text-[10px]">#${index + 1}</span></td>
+                        <td class="p-2.5">
+                            <div class="font-bold text-slate-800">${item.nombre}</div>
+                            <div class="text-[10px] text-pastel-700 font-mono">${item.codigo}</div>
+                        </td>
+                        <td class="p-2.5 text-center"><span class="bg-pastel-100 text-pastel-700 px-2.5 py-1 rounded-lg font-black text-xs">${item.totalConsultas} veces</span></td>
+                        <td class="p-2.5 text-right text-[10px] text-slate-400 font-mono">${item.ultimaFecha}</td>
+                    `;
+                    tbodyRanking.appendChild(tr);
+                });
+            }
+
+            tbodyCronologico.innerHTML = '';
+            const cronologicoArray = [...historialEscaneos].reverse();
+            if (cronologicoArray.length === 0) {
+                tbodyCronologico.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400 italic">Sin escaneos registrados aún.</td></tr>`;
+            } else {
+                cronologicoArray.forEach(esc => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                    tr.innerHTML = `
+                        <td class="p-2.5 font-mono font-bold text-pastel-700">${esc.codigo}</td>
+                        <td class="p-2.5 font-semibold text-slate-800">${esc.nombre}</td>
+                        <td class="p-2.5 text-center font-bold text-slate-800">$${parseFloat(esc.precio).toFixed(2)}</td>
+                        <td class="p-2.5 text-right text-[10px] text-slate-400 font-mono">🕒 ${esc.fecha}</td>
+                    `;
+                    tbodyCronologico.appendChild(tr);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function filtrarTabla() {
+            const inpSearch = document.getElementById('search-input');
+            renderInventario(inpSearch ? inpSearch.value : '');
+        }
+
+        function actualizarEstadisticas() {
+            const statTotal = document.getElementById('stat-total-prendas');
+            const statValor = document.getElementById('stat-valor-total');
+            if (statTotal) statTotal.innerText = productos.reduce((acc, p) => acc + p.cantidad, 0);
+            const valorTotal = productos.reduce((acc, p) => acc + (p.precioVenta * p.cantidad), 0);
+            if (statValor) statValor.innerText = `$${valorTotal.toFixed(2)}`;
+        }
+
+        // --- MÓDULO DE FACTURACIÓN & CONSULTA RÁPIDA ---
+        function actualizarSelectFacturacion() {
+            const select = document.getElementById('fact-select-producto');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Seleccionar Prenda --</option>';
+            productos.forEach(p => {
+                if (p.cantidad > 0) {
+                    const opt = document.createElement('option');
+                    opt.value = p.codigo;
+                    opt.textContent = `${p.nombre} ($${p.precioVenta.toFixed(2)} - Stock: ${p.cantidad})`;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        function agregarAlFacturacionManual() {
+            const select = document.getElementById('fact-select-producto');
+            const codigo = select ? select.value : '';
+            const cantInput = document.getElementById('fact-cantidad');
+            const cant = parseInt(cantInput ? cantInput.value : '1') || 1;
+            if (!codigo) return alert('Selecciona una prenda.');
+            const producto = productos.find(p => p.codigo === codigo);
+            if (!producto) return alert('Prenda no encontrada.');
+
+            agregarPrendaAFacturaObj(producto, cant);
+        }
+
+        function agregarPrendaAFacturaObj(producto, cant) {
+            if (!modoConsultaSoloVista && cant > producto.cantidad) {
+                return alert(`Stock insuficiente. Solo quedan ${producto.cantidad} unidades.`);
+            }
+
+            const item = facturacionItems.find(i => i.codigo === producto.codigo);
+            if (item) {
+                if (!modoConsultaSoloVista && item.cantidad + cant > producto.cantidad) {
+                    return alert(`Supera el stock disponible (${producto.cantidad} u.)`);
+                }
+                item.cantidad += cant;
+            } else {
+                facturacionItems.push({
+                    codigo: producto.codigo,
+                    nombre: producto.nombre,
+                    precioUnitario: producto.precioVenta,
+                    cantidad: cant
+                });
+            }
+            renderFacturacionTabla();
+        }
+
+        function eliminarItemFacturacion(codigo) {
+            facturacionItems = facturacionItems.filter(i => i.codigo !== codigo);
+            renderFacturacionTabla();
+        }
+
+        function renderFacturacionTabla() {
+            const tbody = document.getElementById('fact-tabla-items');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (facturacionItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400 italic text-xs">Escanea o agrega prendas para ver el total.</td></tr>`;
+                document.getElementById('fact-total').innerText = '$0.00';
+                document.getElementById('fact-total-bs').innerText = 'Bs. 0.00';
+                return;
+            }
+            let totalUSD = 0;
+            facturacionItems.forEach(item => {
+                const sub = item.precioUnitario * item.cantidad;
+                totalUSD += sub;
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="py-2.5">
+                        <div class="font-semibold text-slate-800">${item.nombre}</div>
+                        <div class="text-[10px] text-pastel-700 font-mono font-bold">${item.codigo}</div>
+                    </td>
+                    <td class="py-2.5 text-center text-slate-600 font-bold">${item.cantidad}</td>
+                    <td class="py-2.5 text-right font-bold text-slate-800">$${sub.toFixed(2)}</td>
+                    <td class="py-2.5 text-center"><button onclick="eliminarItemFacturacion('${item.codigo}')" class="text-rose-400 p-1"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const totalBs = totalUSD * tasaBCV;
+            document.getElementById('fact-total').innerText = `$${totalUSD.toFixed(2)}`;
+            document.getElementById('fact-total-bs').innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            lucide.createIcons();
+        }
+
+        async function enviarReciboFacturaWhatsApp() {
+            if (facturacionItems.length === 0) return alert('Agrega al menos una prenda.');
+
+            if (modoConsultaSoloVista) {
+                if (confirm('¿Deseas limpiar la lista de consulta actual?')) {
+                    facturacionItems = [];
+                    renderFacturacionTabla();
+                    mostrarToast("Lista de consulta limpiada 🧹");
+                }
+                return;
+            }
+
+            const clienteInput = document.getElementById('fact-cliente');
+            const cliente = clienteInput && clienteInput.value.trim() ? clienteInput.value.trim() : 'Estimado/a Cliente';
+            let telefonoInput = document.getElementById('fact-telefono') ? document.getElementById('fact-telefono').value.trim() : '';
+
+            let listaPrendas = "";
+            let totalUSD = 0;
+            const nroFactura = Math.floor(1000 + Math.random() * 9000);
+
+            for (let i of facturacionItems) {
+                const sub = i.precioUnitario * i.cantidad;
+                totalUSD += sub;
+                listaPrendas += `• ${i.cantidad}x ${i.nombre} [${i.codigo}] -> $${sub.toFixed(2)}\n`;
+
+                const p = productos.find(prod => prod.codigo === i.codigo);
+                if (p) {
+                    const nuevaCantidadStock = Math.max(0, p.cantidad - i.cantidad);
+                    const fechaHoraOriginal = p.fecha || new Date().toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' });
+                    
+                    try {
+                        await fetch(`/api/inventario/${p.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                nombre: `[${p.codigo}] ${p.nombre} | F: ${fechaHoraOriginal}`,
+                                cantidad: nuevaCantidadStock,
+                                precio: p.precioVenta
+                            })
+                        });
+                    } catch (e) {}
+                }
+            }
+
+            await cargarDatosServidor(false);
+
+            const totalBs = totalUSD * tasaBCV;
+            const formatoTotalUSD = `$${totalUSD.toFixed(2)}`;
+            const formatoTotalBs = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const tasaBCVFormateada = `Bs. ${tasaBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const fechaFactura = new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let mensajeFinal = `🛍️ *VELVET BY PENIEL* 🛍️\n` +
+                `🧾 *RECIBO OFICIAL DE COMPRA #${nroFactura}*\n` +
+                `📅 *Fecha:* ${fechaFactura}\n` +
+                `👤 *Cliente:* ${cliente}\n\n` +
+                `*DETALLE DE COMPRA:*\n` +
+                `${listaPrendas}\n` +
+                `💳 *TOTAL PAGADO:* ${formatoTotalUSD} (${formatoTotalBs})\n` +
+                `💵 *Tasa BCV Referencia:* ${tasaBCVFormateada}\n\n` +
+                `✨ *ESTADO:* PAGADO & ENTREGADO ✅\n` +
+                `💖 ¡Gracias por tu compra y confianza! Te esperamos pronto.`;
+
+            let telefonoLimpio = telefonoInput.replace(/\D/g, '');
+            let urlWhatsApp = `https://wa.me/`;
+
+            if (telefonoLimpio.length > 0) {
+                if (telefonoLimpio.startsWith('0')) {
+                    telefonoLimpio = '58' + telefonoLimpio.substring(1);
+                } else if (telefonoLimpio.length === 10) {
+                    telefonoLimpio = '58' + telefonoLimpio;
+                } else if (!telefonoLimpio.startsWith('58') && telefonoLimpio.length <= 9) {
+                    telefonoLimpio = '58' + telefonoLimpio;
+                }
+                urlWhatsApp += `${telefonoLimpio}?`;
+            }
+
+            urlWhatsApp += `text=${encodeURIComponent(mensajeFinal)}`;
+            window.open(urlWhatsApp, '_blank');
+
+            facturacionItems = [];
+            renderFacturacionTabla();
+            document.getElementById('fact-cliente').value = '';
+            document.getElementById('fact-telefono').value = '';
+            mostrarToast("Recibo emitido e inventario descontado 🛍️");
+        }
+
+        // --- SISTEMA DE PRESUPUESTOS ---
+        function actualizarSelectPresupuesto() {
+            const select = document.getElementById('pres-select-producto');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Seleccionar --</option>';
+            productos.forEach(p => {
+                if (p.cantidad > 0) {
+                    const opt = document.createElement('option');
+                    opt.value = p.codigo;
+                    opt.textContent = `${p.nombre} ($${p.precioVenta.toFixed(2)} - Stock: ${p.cantidad})`;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        function agregarAlPresupuesto() {
+            const select = document.getElementById('pres-select-producto');
+            const codigo = select ? select.value : '';
+            const cantInput = document.getElementById('pres-cantidad');
+            const cant = parseInt(cantInput ? cantInput.value : '1') || 1;
+            if (!codigo) return alert('Selecciona una prenda.');
+            const producto = productos.find(p => p.codigo === codigo);
+            if (!producto || cant > producto.cantidad) return alert('Stock insuficiente.');
+
+            const item = presupuestoItems.find(i => i.codigo === codigo);
+            if (item) { item.cantidad += cant; } 
+            else { presupuestoItems.push({ codigo: producto.codigo, nombre: producto.nombre, precioUnitario: producto.precioVenta, cantidad: cant }); }
+
+            renderPresupuestoTabla();
+        }
+
+        function eliminarItemPresupuesto(codigo) {
+            presupuestoItems = presupuestoItems.filter(i => i.codigo !== codigo);
+            renderPresupuestoTabla();
+        }
+
+        function renderPresupuestoTabla() {
+            const tbody = document.getElementById('pres-tabla-items');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (presupuestoItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400 italic text-xs">Sin prendas agregadas.</td></tr>`;
+                document.getElementById('pres-total').innerText = '$0.00';
+                document.getElementById('pres-total-bs').innerText = 'Bs. 0.00';
+                return;
+            }
+            let totalUSD = 0;
+            presupuestoItems.forEach(item => {
+                const sub = item.precioUnitario * item.cantidad;
+                totalUSD += sub;
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="py-2.5 font-semibold text-slate-800">${item.nombre}</td>
+                    <td class="py-2.5 text-center text-slate-600">${item.cantidad}</td>
+                    <td class="py-2.5 text-right font-bold text-slate-800">$${sub.toFixed(2)}</td>
+                    <td class="py-2.5 text-center"><button onclick="eliminarItemPresupuesto('${item.codigo}')" class="text-rose-400 p-1"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const totalBs = totalUSD * tasaBCV;
+            document.getElementById('pres-total').innerText = `$${totalUSD.toFixed(2)}`;
+            document.getElementById('pres-total-bs').innerText = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            lucide.createIcons();
+        }
+
+        function enviarWhatsApp() {
+            const clienteInput = document.getElementById('pres-cliente');
+            const cliente = clienteInput && clienteInput.value.trim() ? clienteInput.value.trim() : 'Estimada';
+            let telefonoInput = document.getElementById('pres-telefono') ? document.getElementById('pres-telefono').value.trim() : '';
+            if (presupuestoItems.length === 0) return alert('Agrega prendas al presupuesto.');
+
+            let listaPrendas = "";
+            let totalUSD = 0;
+            presupuestoItems.forEach(i => {
+                const sub = i.precioUnitario * i.cantidad;
+                totalUSD += sub;
+                listaPrendas += `• ${i.cantidad}x ${i.nombre} ($${sub.toFixed(2)})\n`;
+            });
+
+            const totalBs = totalUSD * tasaBCV;
+            const formatoTotalUSD = `$${totalUSD.toFixed(2)}`;
+            const formatoTotalBs = `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const tasaBCVFormateada = `Bs. ${tasaBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            let mensajeFinal = `✨ *VELVET BY PENIEL* ✨\n` +
+                `🛍️ *Cotización para ${cliente}*\n\n` +
+                `${listaPrendas}\n` +
+                `*Total:* ${formatoTotalUSD} (${formatoTotalBs})\n` +
+                `*Tasa BCV Aplicada:* ${tasaBCVFormateada}\n` +
+                `*Validez:* 24 horas\n\n` +
+                `💖 ¡Gracias por preferirnos!`;
+
+            let telefonoLimpio = telefonoInput.replace(/\D/g, '');
+            let urlWhatsApp = `https://wa.me/`;
+
+            if (telefonoLimpio.length > 0) {
+                if (telefonoLimpio.startsWith('0')) {
+                    telefonoLimpio = '58' + telefonoLimpio.substring(1);
+                } else if (telefonoLimpio.length === 10) {
+                    telefonoLimpio = '58' + telefonoLimpio;
+                } else if (!telefonoLimpio.startsWith('58') && telefonoLimpio.length <= 9) {
+                    telefonoLimpio = '58' + telefonoLimpio;
+                }
+                urlWhatsApp += `${telefonoLimpio}?`;
+            }
+
+            urlWhatsApp += `text=${encodeURIComponent(mensajeFinal)}`;
+            window.open(urlWhatsApp, '_blank');
+        }
+
+        function iniciarEscaneoAutomatico(modo = 'inventario') {
+            initAudioContext();
+            scannerModo = modo;
+            escaneoPausado = false;
+            document.getElementById('scanner-modal-title').innerText = modo === 'facturacion' ? 'Escaneando Prenda para Factura/Consulta' : 'Cámara de Escaneo Continuo';
+            document.getElementById('modal-scanner').classList.remove('hidden');
+            flashOn = false;
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            if (!html5QrCode.isScanning) {
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 15, qrbox: { width: 260, height: 160 } },
+                    (decodedText) => {
+                        if (escaneoPausado) return;
+                        reproducirSonidoBeep();
+                        buscarYMostrarPrenda(decodedText);
+                    },
+                    (err) => {}
+                ).catch(err => {
+                    alert("No se pudo iniciar la cámara.");
+                    cerrarScannerModal();
+                });
+            }
+        }
+
+        function cerrarScannerModal() {
+            escaneoPausado = false;
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('modal-scanner').classList.add('hidden');
+                }).catch(err => console.error(err));
+            } else {
+                document.getElementById('modal-scanner').classList.add('hidden');
+            }
+        }
+
+        function toggleFlash() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                flashOn = !flashOn;
+                const btn = document.getElementById('btn-flash');
+                html5QrCode.applyVideoConstraints({ advanced: [{ torch: flashOn }] }).then(() => {
+                    if (flashOn) {
+                        btn.classList.add('bg-pastel-500', 'text-white');
+                        btn.classList.remove('bg-pastel-100', 'text-pastel-700');
+                    } else {
+                        btn.classList.remove('bg-pastel-500', 'text-white');
+                        btn.classList.add('bg-pastel-100', 'text-pastel-700');
+                    }
+                }).catch(e => alert("Flash no disponible"));
+            }
+        }
+
+        function mostrarToast(mensaje, esError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            if(!toast || !toastMsg) return;
+            
+            toastMsg.innerText = mensaje;
+            if(esError) {
+                toast.classList.remove('bg-gray-900');
+                toast.classList.add('bg-rose-600');
+            } else {
+                toast.classList.remove('bg-rose-600');
+                toast.classList.add('bg-gray-900');
+            }
+
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>

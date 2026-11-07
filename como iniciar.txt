@@ -1,0 +1,9 @@
+primero encendemos el localhost
+
+cmd
+
+ponemos cd y arrastramos la carpeta
+
+luego escribo node server.js
+
+ahora en otro cmd ejecuta cloudflared tunnel --url http://localhost:3000
